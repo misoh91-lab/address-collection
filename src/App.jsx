@@ -1,21 +1,17 @@
- 
 import React, { useState, useEffect } from 'react';
-import { Lock, LogOut, Download, Eye, Edit2, Trash2, Plus, Save, X, AlertCircle } from 'lucide-react';
- 
+import { Lock, LogOut, Download, Eye, Plus } from 'lucide-react';
+
 export default function AddressCollectionApp() {
   const [view, setView] = useState('user');
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [data, setData] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
- 
-  // Google Apps Script URL (환경 변수에서)
+
   const SCRIPT_URL = process.env.REACT_APP_SCRIPT_URL || '';
- 
-  // 폼 상태
+
   const [formData, setFormData] = useState({
     sabun: '',
     name: '',
@@ -23,24 +19,22 @@ export default function AddressCollectionApp() {
     receiverPhone: '',
     receiverAddress: ''
   });
- 
-  // 데이터 로드
+
   useEffect(() => {
     loadData();
   }, []);
- 
+
   const loadData = async () => {
     if (!SCRIPT_URL) {
       setError('Google Apps Script URL이 설정되지 않았습니다.');
       return;
     }
- 
+
     setLoading(true);
     try {
       const response = await fetch(SCRIPT_URL);
       const result = await response.json();
       
-      // 첫 번째 행(헤더)을 제외한 데이터만 처리
       if (result.data && result.data.length > 1) {
         const processedData = result.data.slice(1).map((row, index) => ({
           id: index,
@@ -55,17 +49,16 @@ export default function AddressCollectionApp() {
       setError('');
     } catch (err) {
       setError('데이터 로드 실패: ' + err.message);
-      console.error('Load error:', err);
     }
     setLoading(false);
   };
- 
+
   const saveDataToSheet = async (newEntry) => {
     if (!SCRIPT_URL) {
       alert('Google Apps Script URL이 설정되지 않았습니다.');
       return false;
     }
- 
+
     try {
       const payload = {
         action: 'add',
@@ -75,12 +68,12 @@ export default function AddressCollectionApp() {
         receiverPhone: newEntry.receiverPhone,
         receiverAddress: newEntry.receiverAddress
       };
- 
+
       const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
- 
+
       const result = await response.json();
       if (result.success) {
         setError('');
@@ -88,12 +81,10 @@ export default function AddressCollectionApp() {
       }
     } catch (err) {
       setError('저장 실패: ' + err.message);
-      console.error('Save error:', err);
     }
     return false;
   };
- 
-  // 사용자 입력 폼 제출
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -101,7 +92,7 @@ export default function AddressCollectionApp() {
       alert('모든 필드를 입력해주세요.');
       return;
     }
- 
+
     setLoading(true);
     const success = await saveDataToSheet(formData);
     
@@ -118,8 +109,7 @@ export default function AddressCollectionApp() {
     }
     setLoading(false);
   };
- 
-  // 관리자 로그인
+
   const handleAdminLogin = (e) => {
     e.preventDefault();
     if (password === 'admin123') {
@@ -132,55 +122,19 @@ export default function AddressCollectionApp() {
       setPassword('');
     }
   };
- 
-  // 로그아웃
+
   const handleLogout = () => {
     setIsLoggedIn(false);
     setView('user');
     setPassword('');
-    setEditingId(null);
   };
- 
-  // 수정 시작
-  const startEdit = (id) => {
-    const item = data.find(d => d.id === id);
-    setFormData({
-      sabun: item.sabun,
-      name: item.name,
-      receiverName: item.receiverName,
-      receiverPhone: item.receiverPhone,
-      receiverAddress: item.receiverAddress
-    });
-    setEditingId(id);
-  };
- 
-  // 수정 저장
-  const saveEdit = async () => {
-    if (editingId !== null) {
-      const newData = data.map(item =>
-        item.id === editingId ? { ...item, ...formData } : item
-      );
-      
-      alert('구글 시트에서 직접 수정해주세요. 앱을 새로고침합니다.');
-      setEditingId(null);
-      setFormData({
-        sabun: '',
-        name: '',
-        receiverName: '',
-        receiverPhone: '',
-        receiverAddress: ''
-      });
-      await loadData();
-    }
-  };
- 
-  // CSV 다운로드
+
   const handleDownload = () => {
     if (data.length === 0) {
       alert('다운로드할 데이터가 없습니다.');
       return;
     }
- 
+
     const headers = ['사번', '이름', '수령인이름', '수령인 전화번호', '수령인 주소'];
     const rows = data.map(item => [
       item.sabun,
@@ -189,46 +143,31 @@ export default function AddressCollectionApp() {
       item.receiverPhone,
       item.receiverAddress
     ]);
- 
+
     let csvContent = headers.join(',') + '\n';
     rows.forEach(row => {
       csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
     });
- 
+
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `주소_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
- 
-  // 에러 알림
+
   if (error && view === 'user') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', maxWidth: '500px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-            <AlertCircle size={32} color="#dc2626" />
-            <div>
-              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#dc2626' }}>설정 오류</h2>
-              <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>{error}</p>
-            </div>
-          </div>
-          <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
-            <p style={{ margin: 0, fontWeight: '600', marginBottom: '8px' }}>✅ 설정 방법:</p>
-            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-              <li>Google Apps Script Web App URL을 복사하세요</li>
-              <li>프로젝트 루트에 .env 파일 생성</li>
-              <li>다음 내용 추가: REACT_APP_SCRIPT_URL=YOUR_URL</li>
-              <li>앱 재시작</li>
-            </ol>
-          </div>
+        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', maxWidth: '500px' }}>
+          <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>⚠️ 설정 오류</h2>
+          <p style={{ color: '#666', marginBottom: '16px' }}>{error}</p>
+          <p style={{ fontSize: '13px', color: '#374151' }}>✅ Vercel Settings → Environment Variables에서 REACT_APP_SCRIPT_URL을 추가하고 Redeploy하세요.</p>
         </div>
       </div>
     );
   }
- 
-  // 사용자 입력 화면
+
   if (view === 'user') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -252,12 +191,12 @@ export default function AddressCollectionApp() {
             <Lock size={16} /> 관리자
           </button>
         </div>
- 
+
         <div style={{ maxWidth: '600px', margin: '0 auto', padding: '60px 20px 40px' }}>
           <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1e40af', marginBottom: '8px' }}>배송/배달 주소 등록</h1>
             <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px' }}>필요한 정보를 입력하고 제출해주세요.</p>
- 
+
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>사번 *</label>
@@ -276,7 +215,7 @@ export default function AddressCollectionApp() {
                   placeholder="예: A001"
                 />
               </div>
- 
+
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>이름 *</label>
                 <input
@@ -294,7 +233,7 @@ export default function AddressCollectionApp() {
                   placeholder="예: 김철수"
                 />
               </div>
- 
+
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>수령인이름 *</label>
                 <input
@@ -312,7 +251,7 @@ export default function AddressCollectionApp() {
                   placeholder="예: 이영희"
                 />
               </div>
- 
+
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>수령인 전화번호 *</label>
                 <input
@@ -330,7 +269,7 @@ export default function AddressCollectionApp() {
                   placeholder="예: 010-1234-5678"
                 />
               </div>
- 
+
               <div style={{ marginBottom: '28px' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>수령인 주소 *</label>
                 <textarea
@@ -349,7 +288,7 @@ export default function AddressCollectionApp() {
                   placeholder="예: 서울시 강남구 테헤란로 123, 456호"
                 />
               </div>
- 
+
               <button
                 type="submit"
                 disabled={loading}
@@ -365,8 +304,7 @@ export default function AddressCollectionApp() {
                   cursor: loading ? 'not-allowed' : 'pointer'
                 }}
               >
-                <Plus size={20} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
-                {loading ? '등록 중...' : '주소 등록'}
+                {loading ? '등록 중...' : '✓ 주소 등록'}
               </button>
             </form>
           </div>
@@ -374,18 +312,16 @@ export default function AddressCollectionApp() {
       </div>
     );
   }
- 
-  // 관리자 로그인 화면
+
   if (!isLoggedIn) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', maxWidth: '400px', width: '100%', margin: '20px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e40af', marginBottom: '8px', textAlign: 'center' }}>관리자 로그인</h1>
-          <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', textAlign: 'center' }}>비밀번호를 입력해주세요.</p>
- 
+          <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px', textAlign: 'center' }}>비밀번호: admin123</p>
+
           <form onSubmit={handleAdminLogin}>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', color: '#1e293b', fontSize: '14px' }}>비밀번호</label>
               <input
                 type="password"
                 value={password}
@@ -402,7 +338,7 @@ export default function AddressCollectionApp() {
                 autoFocus
               />
             </div>
- 
+
             <button
               type="submit"
               style={{
@@ -420,7 +356,7 @@ export default function AddressCollectionApp() {
             >
               로그인
             </button>
- 
+
             <button
               type="button"
               onClick={() => setView('user')}
@@ -443,8 +379,7 @@ export default function AddressCollectionApp() {
       </div>
     );
   }
- 
-  // 관리자 대시보드
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -468,7 +403,7 @@ export default function AddressCollectionApp() {
           <LogOut size={16} /> 로그아웃
         </button>
       </div>
- 
+
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px' }}>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           <button
@@ -487,9 +422,9 @@ export default function AddressCollectionApp() {
               gap: '6px'
             }}
           >
-            <Eye size={16} /> {showPreview ? '미리보기 중' : '미리보기'}
+            <Eye size={16} /> {showPreview ? '표로 보기' : '목록으로 보기'}
           </button>
- 
+
           <button
             onClick={handleDownload}
             style={{
@@ -508,7 +443,7 @@ export default function AddressCollectionApp() {
           >
             <Download size={16} /> CSV 다운로드
           </button>
- 
+
           <button
             onClick={loadData}
             disabled={loading}
@@ -520,20 +455,17 @@ export default function AddressCollectionApp() {
               borderRadius: '6px',
               cursor: loading ? 'not-allowed' : 'pointer',
               fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
+              fontWeight: '600'
             }}
           >
-            🔄 {loading ? '로딩 중...' : '새로고침'}
+            🔄 새로고침
           </button>
         </div>
- 
+
         <div style={{ backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
           <p style={{ margin: 0, fontSize: '14px', color: '#475569' }}>등록된 주소: <span style={{ fontWeight: '700', color: '#1e40af', fontSize: '18px' }}>{data.length}건</span></p>
         </div>
- 
+
         {data.length === 0 ? (
           <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', textAlign: 'center' }}>
             <p style={{ color: '#64748b', fontSize: '14px' }}>등록된 주소가 없습니다.</p>
@@ -545,20 +477,20 @@ export default function AddressCollectionApp() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#1e40af' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600', borderRight: '1px solid #e2e8f0' }}>사번</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600', borderRight: '1px solid #e2e8f0' }}>이름</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600', borderRight: '1px solid #e2e8f0' }}>수령인이름</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600', borderRight: '1px solid #e2e8f0' }}>수령인 전화번호</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>수령인 주소</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>사번</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>이름</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>수령인이름</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>전화번호</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: 'white', fontWeight: '600' }}>주소</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.map((item, idx) => (
                       <tr key={item.id} style={{ backgroundColor: idx % 2 === 0 ? '#f8fafc' : 'white', borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', color: '#1e293b' }}>{item.sabun}</td>
-                        <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', color: '#1e293b' }}>{item.name}</td>
-                        <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', color: '#1e293b' }}>{item.receiverName}</td>
-                        <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', color: '#1e293b' }}>{item.receiverPhone}</td>
+                        <td style={{ padding: '12px', color: '#1e293b' }}>{item.sabun}</td>
+                        <td style={{ padding: '12px', color: '#1e293b' }}>{item.name}</td>
+                        <td style={{ padding: '12px', color: '#1e293b' }}>{item.receiverName}</td>
+                        <td style={{ padding: '12px', color: '#1e293b' }}>{item.receiverPhone}</td>
                         <td style={{ padding: '12px', color: '#1e293b' }}>{item.receiverAddress}</td>
                       </tr>
                     ))}
@@ -569,24 +501,11 @@ export default function AddressCollectionApp() {
               <div style={{ padding: '20px' }}>
                 {data.map((item) => (
                   <div key={item.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>사번</p>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e293b', fontWeight: '500' }}>{item.sabun}</p>
- 
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>이름</p>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e293b', fontWeight: '500' }}>{item.name}</p>
- 
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>수령인이름</p>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e293b', fontWeight: '500' }}>{item.receiverName}</p>
- 
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>수령인 전화번호</p>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1e293b', fontWeight: '500' }}>{item.receiverPhone}</p>
- 
-                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>수령인 주소</p>
-                        <p style={{ margin: '0', fontSize: '14px', color: '#1e293b', fontWeight: '500' }}>{item.receiverAddress}</p>
-                      </div>
-                    </div>
+                    <p><strong>사번:</strong> {item.sabun}</p>
+                    <p><strong>이름:</strong> {item.name}</p>
+                    <p><strong>수령인:</strong> {item.receiverName}</p>
+                    <p><strong>전화:</strong> {item.receiverPhone}</p>
+                    <p><strong>주소:</strong> {item.receiverAddress}</p>
                   </div>
                 ))}
               </div>
@@ -597,4 +516,3 @@ export default function AddressCollectionApp() {
     </div>
   );
 }
- 
